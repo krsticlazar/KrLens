@@ -1,0 +1,18 @@
+
+temp/
+todo.txt
+docs/Vezbe - Materijali/
+docs/*.pdf
+
+.vs/
+TestResults/
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+**/coverage/
+*.user
+*.suo
+*.cache
+
+src/KrLensClient/.env.local

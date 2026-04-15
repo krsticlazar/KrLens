@@ -1,0 +1,79 @@
+.panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.copy {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.copy h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.copy p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.eyebrow {
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent-strong);
+}
+
+.dropzone {
+  position: relative;
+  display: grid;
+  gap: 0.55rem;
+  padding: 1.2rem;
+  border-radius: 1.35rem;
+  border: 1px dashed rgba(22, 49, 58, 0.2);
+  background:
+    linear-gradient(145deg, rgba(28, 124, 133, 0.08), rgba(255, 255, 255, 0.88)),
+    rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.dropzone:hover {
+  transform: translateY(-1px);
+  border-color: rgba(28, 124, 133, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(28, 124, 133, 0.08);
+}
+
+.dropzoneActive {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(28, 124, 133, 0.2);
+}
+
+.badge {
+  width: fit-content;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(15, 76, 92, 0.1);
+  color: var(--accent-strong);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.dropzone strong {
+  font-size: 1rem;
+}
+
+.dropzone span:last-child {
+  color: var(--muted);
+}
+
+.input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}

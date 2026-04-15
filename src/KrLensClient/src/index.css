@@ -1,0 +1,50 @@
+:root {
+  --bg-1: #f3eadf;
+  --bg-2: #d8e7ef;
+  --panel: rgba(255, 252, 247, 0.82);
+  --ink: #16313a;
+  --muted: #5b6d72;
+  --accent: #1c7c85;
+  --accent-strong: #0f4c5c;
+  --shadow: 0 20px 48px rgba(22, 49, 58, 0.1);
+  --font-body: 'Aptos', 'Segoe UI Variable', 'Trebuchet MS', sans-serif;
+  --font-heading: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
+
+  font-family: var(--font-body);
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--ink);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(28, 124, 133, 0.14), transparent 32rem),
+    linear-gradient(135deg, var(--bg-1), var(--bg-2));
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}

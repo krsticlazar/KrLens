@@ -1,0 +1,136 @@
+.panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.copy {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.copy h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.copy p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.eyebrow {
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent-strong);
+}
+
+.list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.item {
+  border: 1px solid rgba(22, 49, 58, 0.12);
+  border-radius: 1.2rem;
+  background: rgba(255, 255, 255, 0.72);
+  overflow: hidden;
+}
+
+.itemSelected {
+  border-color: rgba(28, 124, 133, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(28, 124, 133, 0.08);
+}
+
+.itemToggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.95rem 1rem;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.itemMeta {
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.itemBody {
+  display: grid;
+  gap: 0.85rem;
+  padding: 0 1rem 1rem;
+}
+
+.emptyState {
+  margin: 0;
+  color: var(--muted);
+}
+
+.paramGrid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.paramField {
+  display: grid;
+  gap: 0.45rem;
+  color: var(--ink);
+}
+
+.paramLabel {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.92rem;
+}
+
+.paramLabel strong {
+  color: var(--accent-strong);
+}
+
+.paramField input,
+.paramField select {
+  width: 100%;
+  min-height: 2.6rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(22, 49, 58, 0.15);
+  background: rgba(255, 255, 255, 0.92);
+  padding: 0 0.85rem;
+  color: var(--ink);
+}
+
+.paramField input[type='range'] {
+  min-height: auto;
+  padding: 0;
+}
+
+.applyButton {
+  justify-self: start;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.75rem 1rem;
+  background: var(--accent-strong);
+  color: #f8fffd;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    opacity 160ms ease;
+}
+
+.applyButton:hover:enabled {
+  transform: translateY(-1px);
+}
+
+.applyButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

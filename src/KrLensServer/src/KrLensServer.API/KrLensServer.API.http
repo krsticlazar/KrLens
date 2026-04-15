@@ -1,0 +1,6 @@
+@KrLensServer.API_HostAddress = http://localhost:5212
+
+GET {{KrLensServer.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

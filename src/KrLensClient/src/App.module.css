@@ -1,0 +1,130 @@
+.shell {
+  min-height: 100svh;
+  padding: 1.5rem;
+  color: var(--ink);
+}
+
+.masthead {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  align-items: stretch;
+  margin-bottom: 1.4rem;
+}
+
+.titleBlock {
+  flex: 1;
+  padding: 1.4rem 1.6rem;
+  border-radius: 1.8rem;
+  border: 1px solid rgba(22, 49, 58, 0.1);
+  background:
+    radial-gradient(circle at top left, rgba(28, 124, 133, 0.16), transparent 22rem),
+    linear-gradient(140deg, rgba(255, 255, 255, 0.86), rgba(251, 246, 236, 0.96));
+  box-shadow: var(--shadow);
+}
+
+.titleBlock h1 {
+  margin: 0;
+  max-width: 16ch;
+  font-family: var(--font-heading);
+  font-size: clamp(2rem, 4vw, 3.75rem);
+  line-height: 0.96;
+  letter-spacing: -0.05em;
+}
+
+.titleBlock p:last-child {
+  max-width: 46rem;
+  margin-top: 0.9rem;
+  color: var(--muted);
+}
+
+.eyebrow {
+  margin: 0 0 0.55rem;
+  font-size: 0.74rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent-strong);
+}
+
+.statusCard {
+  width: min(18rem, 100%);
+  display: grid;
+  gap: 0.35rem;
+  align-content: start;
+  padding: 1.4rem;
+  border-radius: 1.8rem;
+  background: rgba(15, 76, 92, 0.92);
+  color: #eefaf8;
+  box-shadow: 0 22px 50px rgba(15, 76, 92, 0.18);
+}
+
+.statusCard span {
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(238, 250, 248, 0.72);
+}
+
+.statusCard strong {
+  font-size: 1.65rem;
+  font-family: var(--font-heading);
+}
+
+.statusCard small {
+  color: rgba(238, 250, 248, 0.78);
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(18rem, 23rem) minmax(0, 1fr);
+  gap: 1.4rem;
+  align-items: start;
+}
+
+.sideColumn,
+.mainColumn {
+  display: grid;
+  gap: 1.2rem;
+}
+
+.card,
+.heroCard {
+  padding: 1.15rem;
+  border-radius: 1.8rem;
+  border: 1px solid rgba(22, 49, 58, 0.1);
+  background: rgba(255, 252, 247, 0.78);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+}
+
+.heroCard {
+  padding: 1.3rem;
+}
+
+@media (max-width: 1100px) {
+  .masthead {
+    flex-direction: column;
+  }
+
+  .statusCard {
+    width: 100%;
+  }
+
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .shell {
+    padding: 1rem;
+  }
+
+  .titleBlock,
+  .statusCard,
+  .card,
+  .heroCard {
+    padding: 1rem;
+    border-radius: 1.3rem;
+  }
+}
