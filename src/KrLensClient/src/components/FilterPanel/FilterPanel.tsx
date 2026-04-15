@@ -25,9 +25,7 @@ export function FilterPanel({ disabled, onApply }: FilterPanelProps) {
   return (
     <section className={styles.panel}>
       <div className={styles.copy}>
-        <p className={styles.eyebrow}>Filteri</p>
-        <h2>Lanac obrade</h2>
-        <p>Izaberi efekat, podesi parametre i pošalji zahtev serveru. Obrada se radi nad aktivnom sesijom.</p>
+        <h2>FILTERI</h2>
       </div>
 
       <div className={styles.list}>

@@ -25,12 +25,8 @@ export function UploadPanel({ disabled, isLoading, onUpload }: UploadPanelProps)
   return (
     <section className={styles.panel}>
       <div className={styles.copy}>
-        <p className={styles.eyebrow}>Ulaz</p>
-        <h2>Učitaj sliku</h2>
-        <p>
-          Podržani su PNG, JPEG, BMP, GIF i MSI. Posle uploada backend drži radnu sesiju za sva
-          sledeća procesiranja.
-        </p>
+        <h2>Ucitaj sliku</h2>
+        <p>Podrzani su PNG, JPEG, BMP, GIF i MSI.</p>
       </div>
 
       <label
@@ -53,7 +49,7 @@ export function UploadPanel({ disabled, isLoading, onUpload }: UploadPanelProps)
       >
         <input
           id="image-upload"
-          aria-label="Učitaj sliku"
+          aria-label="Ucitaj sliku"
           type="file"
           accept={ACCEPTED_FORMATS}
           className={styles.input}
@@ -64,7 +60,7 @@ export function UploadPanel({ disabled, isLoading, onUpload }: UploadPanelProps)
           }}
         />
         <span className={styles.badge}>{isLoading ? 'Obrada...' : 'Drop ili klik'}</span>
-        <strong>Pošalji novi kadar</strong>
+        <strong>Posalji novu sliku</strong>
         <span>{fileName ?? 'Prevuci fajl ili otvori sistemski picker.'}</span>
       </label>
     </section>

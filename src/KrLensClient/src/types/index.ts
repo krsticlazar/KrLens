@@ -35,18 +35,44 @@ export interface FilterDefinition {
   params: ParamDefinition[]
 }
 
+export interface OriginalImageMeta {
+  format: string
+  width: number
+  height: number
+}
+
 export interface AppState {
   sessionId: string | null
   originalImageUrl: string | null
   currentImageUrl: string | null
+  originalMeta: OriginalImageMeta | null
+  sessionState: SessionState | null
   isLoading: boolean
   error: string | null
+}
+
+export interface SessionHistoryItem {
+  step: number
+  filter: string
+  parameters: FilterParameters | null
+}
+
+export interface SessionState {
+  sessionId: string
+  width: number
+  height: number
+  currentStep: number
+  maxHistory: number
+  canUndo: boolean
+  canRedo: boolean
+  history: SessionHistoryItem[]
 }
 
 export interface UploadResponse {
   sessionId: string
   width: number
   height: number
+  state: SessionState
 }
 
 export interface ImageSnapshot {

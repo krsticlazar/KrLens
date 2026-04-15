@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using KrLensServer.API.Models;
 using KrLensServer.Core.Logging;
+using KrLensServer.Core.Models;
 using KrLensServer.Core.Services;
 
 namespace KrLensServer.API.Controllers;
@@ -74,7 +75,7 @@ public sealed class ImageController : ControllerBase
         var user = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         _filterLogger.LogUpload(sessionId, safeName, file.Length, user, image.Width, image.Height);
 
-        return Ok(new UploadImageResponse(sessionId, image.Width, image.Height));
+        return Ok(new UploadImageResponse(sessionId, image.Width, image.Height, _sessionStore.GetState(sessionId)));
     }
 
     [HttpGet("download/{sessionId}")]
@@ -87,10 +88,50 @@ public sealed class ImageController : ControllerBase
         return File(bytes, contentType, $"{sessionId}.{normalizedFormat}");
     }
 
+    [HttpGet("session/{sessionId}/state")]
+    public ActionResult<SessionState> State(string sessionId)
+    {
+        return Ok(_sessionStore.GetState(sessionId));
+    }
+
+    [HttpPost("session/{sessionId}/undo")]
+    public Task<IActionResult> Undo(string sessionId, CancellationToken cancellationToken)
+    {
+        var image = _sessionStore.Undo(sessionId);
+        return CreatePreviewResponse(image, cancellationToken);
+    }
+
+    [HttpPost("session/{sessionId}/redo")]
+    public Task<IActionResult> Redo(string sessionId, CancellationToken cancellationToken)
+    {
+        var image = _sessionStore.Redo(sessionId);
+        return CreatePreviewResponse(image, cancellationToken);
+    }
+
+    [HttpPost("session/{sessionId}/revert")]
+    public Task<IActionResult> Revert(string sessionId, CancellationToken cancellationToken)
+    {
+        var image = _sessionStore.Revert(sessionId);
+        return CreatePreviewResponse(image, cancellationToken);
+    }
+
+    [HttpPost("session/{sessionId}/rotate-right")]
+    public Task<IActionResult> RotateRight(string sessionId, CancellationToken cancellationToken)
+    {
+        var image = _sessionStore.RotateRight(sessionId);
+        return CreatePreviewResponse(image, cancellationToken);
+    }
+
     [HttpDelete("session/{sessionId}")]
     public IActionResult Delete(string sessionId)
     {
         _sessionStore.Delete(sessionId);
         return NoContent();
+    }
+
+    private async Task<IActionResult> CreatePreviewResponse(BitmapBuffer image, CancellationToken cancellationToken)
+    {
+        var bytes = await _imageService.EncodeAsync(image, "png", cancellationToken);
+        return File(bytes, "image/png");
     }
 }

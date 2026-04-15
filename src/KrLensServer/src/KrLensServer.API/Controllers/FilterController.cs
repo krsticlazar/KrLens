@@ -45,7 +45,7 @@ public sealed class FilterController : ControllerBase
         {
             var result = filter.Apply(current, request.Parameters);
             stopwatch.Stop();
-            _sessionStore.Update(request.SessionId, result);
+            _sessionStore.Push(request.SessionId, result, request.Filter, request.Parameters);
             _filterLogger.LogFilter(
                 request.SessionId,
                 request.Filter,
@@ -82,7 +82,7 @@ public sealed class FilterController : ControllerBase
         {
             var result = _filterPipeline.Apply(current, request.Filters);
             stopwatch.Stop();
-            _sessionStore.Update(request.SessionId, result);
+            _sessionStore.Push(request.SessionId, result, "Batch", null);
             _filterLogger.LogFilter(
                 request.SessionId,
                 "Batch",

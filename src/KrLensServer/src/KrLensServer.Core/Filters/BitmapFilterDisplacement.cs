@@ -1,3 +1,5 @@
+using System.Drawing;
+using System.Drawing.Imaging;
 using KrLensServer.Core.Models;
 
 namespace KrLensServer.Core.Filters;
@@ -10,45 +12,45 @@ internal static class BitmapFilterDisplacement
         public double Y;
     }
 
-    internal struct Point
+    internal struct OffsetPoint
     {
         public int X;
         public int Y;
     }
 
-    public static BitmapBuffer Flip(BitmapBuffer source, bool bHorz, bool bVert)
+    public static BitmapBuffer Flip(BitmapBuffer source, bool horizontal, bool vertical)
     {
-        var ptFlip = new Point[source.Width, source.Height];
-        var nWidth = source.Width;
-        var nHeight = source.Height;
+        var map = new OffsetPoint[source.Width, source.Height];
+        var width = source.Width;
+        var height = source.Height;
 
-        for (var x = 0; x < nWidth; ++x)
+        for (var x = 0; x < width; ++x)
         {
-            for (var y = 0; y < nHeight; ++y)
+            for (var y = 0; y < height; ++y)
             {
-                ptFlip[x, y].X = bHorz ? nWidth - (x + 1) : x;
-                ptFlip[x, y].Y = bVert ? nHeight - (y + 1) : y;
+                map[x, y].X = horizontal ? width - (x + 1) : x;
+                map[x, y].Y = vertical ? height - (y + 1) : y;
             }
         }
 
-        return OffsetFilterAbs(source, ptFlip);
+        return OffsetFilterAbs(source, map);
     }
 
     public static BitmapBuffer Water(BitmapBuffer source, double amplitude, double wavelength)
     {
-        var nWidth = source.Width;
-        var nHeight = source.Height;
-        var fp = new FloatPoint[nWidth, nHeight];
-        var pt = new Point[nWidth, nHeight];
+        var width = source.Width;
+        var height = source.Height;
+        var floatMap = new FloatPoint[width, height];
+        var map = new OffsetPoint[width, height];
 
         double newX;
         double newY;
         double xo;
         double yo;
 
-        for (var x = 0; x < nWidth; ++x)
+        for (var x = 0; x < width; ++x)
         {
-            for (var y = 0; y < nHeight; ++y)
+            for (var y = 0; y < height; ++y)
             {
                 xo = amplitude * Math.Sin((2.0 * Math.PI * y) / wavelength);
                 yo = amplitude * Math.Cos((2.0 * Math.PI * x) / wavelength);
@@ -56,64 +58,85 @@ internal static class BitmapFilterDisplacement
                 newX = x + xo;
                 newY = y + yo;
 
-                if (newX > 0 && newX < nWidth)
+                if (newX > 0 && newX < width)
                 {
-                    fp[x, y].X = newX;
-                    pt[x, y].X = (int)newX;
+                    floatMap[x, y].X = newX;
+                    map[x, y].X = (int)newX;
                 }
                 else
                 {
-                    fp[x, y].X = x;
-                    pt[x, y].X = x;
+                    floatMap[x, y].X = x;
+                    map[x, y].X = x;
                 }
 
-                if (newY > 0 && newY < nHeight)
+                if (newY > 0 && newY < height)
                 {
-                    fp[x, y].Y = newY;
-                    pt[x, y].Y = (int)newY;
+                    floatMap[x, y].Y = newY;
+                    map[x, y].Y = (int)newY;
                 }
                 else
                 {
-                    fp[x, y].Y = y;
-                    pt[x, y].Y = y;
+                    floatMap[x, y].Y = y;
+                    map[x, y].Y = y;
                 }
             }
         }
 
-        return OffsetFilterAbs(source, pt);
+        return OffsetFilterAbs(source, map);
     }
 
-    public static unsafe BitmapBuffer OffsetFilterAbs(BitmapBuffer source, Point[,] offset)
+    public static BitmapBuffer OffsetFilterAbs(BitmapBuffer source, OffsetPoint[,] offset)
     {
-        var destination = new BitmapBuffer(source.Width, source.Height, source.Channels);
-        var width = source.Width;
-        var height = source.Height;
-        var channels = source.Channels;
+        using var sourceBitmap = BitmapFilterSupport.CreateBitmap(source);
+        using var destinationBitmap = BitmapFilterSupport.CreateEmpty(sourceBitmap);
+        var rect = new Rectangle(0, 0, sourceBitmap.Width, sourceBitmap.Height);
+        var sourceData = sourceBitmap.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+        var destinationData = destinationBitmap.LockBits(rect, ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);
 
-        fixed (byte* pSrcBase = source.Pixels)
-        fixed (byte* pDstBase = destination.Pixels)
+        try
         {
-            byte* pDst = pDstBase;
-
-            for (var y = 0; y < height; ++y)
+            unsafe
             {
-                for (var x = 0; x < width; ++x)
-                {
-                    var xOffset = offset[x, y].X;
-                    var yOffset = offset[x, y].Y;
+                byte* pSrcBase = (byte*)(void*)sourceData.Scan0;
+                byte* pDst = (byte*)(void*)destinationData.Scan0;
+                var strideSrc = sourceData.Stride;
+                var strideDst = destinationData.Stride;
+                var noffset = strideDst - (destinationBitmap.Width * 3);
 
-                    if (yOffset >= 0 && yOffset < height && xOffset >= 0 && xOffset < width)
+                for (var y = 0; y < destinationBitmap.Height; ++y)
+                {
+                    for (var x = 0; x < destinationBitmap.Width; ++x)
                     {
-                        var sourceIndex = ((yOffset * width) + xOffset) * channels;
-                        for (var channel = 0; channel < channels; ++channel)
+                        var xOffset = offset[x, y].X;
+                        var yOffset = offset[x, y].Y;
+
+                        if (yOffset >= 0 && yOffset < destinationBitmap.Height && xOffset >= 0 && xOffset < destinationBitmap.Width)
                         {
-                            pDst[((y * width) + x) * channels + channel] = pSrcBase[sourceIndex + channel];
+                            var sourceIndex = (yOffset * strideSrc) + (xOffset * 3);
+                            pDst[0] = pSrcBase[sourceIndex];
+                            pDst[1] = pSrcBase[sourceIndex + 1];
+                            pDst[2] = pSrcBase[sourceIndex + 2];
                         }
+                        else
+                        {
+                            pDst[0] = 0;
+                            pDst[1] = 0;
+                            pDst[2] = 0;
+                        }
+
+                        pDst += 3;
                     }
+
+                    pDst += noffset;
                 }
             }
         }
+        finally
+        {
+            sourceBitmap.UnlockBits(sourceData);
+            destinationBitmap.UnlockBits(destinationData);
+        }
 
-        return destination;
+        return BitmapFilterSupport.ToBuffer(destinationBitmap);
     }
 }

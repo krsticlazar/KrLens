@@ -1,6 +1,9 @@
 .panel {
   display: grid;
   gap: 1rem;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
 }
 
 .header {
@@ -8,6 +11,7 @@
   justify-content: space-between;
   gap: 1rem;
   align-items: end;
+  min-width: 0;
 }
 
 .header h2 {
@@ -17,9 +21,11 @@
 
 .copy {
   max-width: 22rem;
+  min-width: 0;
   margin: 0;
   color: var(--muted);
   text-align: right;
+  font-weight: 600;
 }
 
 .eyebrow {
@@ -27,30 +33,44 @@
   font-size: 0.72rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--accent-strong);
+  color: var(--accent-blue);
 }
 
 .stage {
   position: relative;
-  min-height: 38rem;
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 26rem;
+  height: min(72svh, 46rem);
   border-radius: 1.9rem;
   overflow: hidden;
-  border: 1px solid rgba(22, 49, 58, 0.12);
+  border: 1px solid rgba(3, 110, 168, 0.16);
   background:
-    radial-gradient(circle at top left, rgba(28, 124, 133, 0.14), transparent 28rem),
-    linear-gradient(150deg, rgba(251, 248, 241, 0.98), rgba(255, 255, 255, 0.9));
+    radial-gradient(circle at top left, rgba(1, 162, 198, 0.16), transparent 26rem),
+    radial-gradient(circle at bottom right, rgba(201, 149, 192, 0.14), transparent 24rem),
+    linear-gradient(150deg, rgba(224, 228, 234, 0.96), rgba(255, 255, 255, 0.92));
 }
 
 .mainImage {
+  display: block;
   width: 100%;
   height: 100%;
-  min-height: 38rem;
+  max-width: 100%;
+  max-height: 100%;
+  min-width: 0;
+  min-height: 0;
   object-fit: contain;
+  object-position: center top;
   padding: 1.5rem;
 }
 
 .placeholder {
-  min-height: 38rem;
+  width: 100%;
+  height: 100%;
   display: grid;
   place-items: center;
   gap: 0.55rem;
@@ -69,13 +89,14 @@
   right: 1.2rem;
   bottom: 1.2rem;
   width: min(13rem, 34vw);
+  max-width: calc(100% - 2.4rem);
   display: grid;
   gap: 0.6rem;
   padding: 0.8rem;
   border-radius: 1.2rem;
   background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(22, 49, 58, 0.12);
-  box-shadow: 0 18px 38px rgba(22, 49, 58, 0.12);
+  border: 1px solid rgba(164, 105, 173, 0.18);
+  box-shadow: 0 18px 38px rgba(10, 68, 102, 0.12);
 }
 
 .originalCard span {
@@ -98,9 +119,9 @@
   display: grid;
   place-items: center;
   gap: 0.75rem;
-  background: rgba(249, 244, 236, 0.78);
+  background: rgba(224, 228, 234, 0.8);
   backdrop-filter: blur(5px);
-  color: var(--accent-strong);
+  color: var(--accent-blue);
   font-weight: 600;
 }
 
@@ -108,8 +129,8 @@
   width: 2.9rem;
   height: 2.9rem;
   border-radius: 999px;
-  border: 3px solid rgba(15, 76, 92, 0.18);
-  border-top-color: var(--accent-strong);
+  border: 3px solid rgba(3, 110, 168, 0.18);
+  border-top-color: var(--accent-blue);
   animation: spin 900ms linear infinite;
 }
 
@@ -117,8 +138,8 @@
   margin: 0;
   padding: 0.9rem 1rem;
   border-radius: 1rem;
-  background: rgba(175, 49, 49, 0.08);
-  color: #8d2a2a;
+  background: rgba(164, 105, 173, 0.12);
+  color: var(--ink);
 }
 
 @keyframes spin {
@@ -138,8 +159,8 @@
   }
 
   .stage,
-  .mainImage,
   .placeholder {
-    min-height: 26rem;
+    min-height: 22rem;
+    height: min(60svh, 32rem);
   }
 }

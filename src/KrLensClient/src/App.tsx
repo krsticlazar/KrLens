@@ -4,13 +4,14 @@ import { FilterPanel } from './components/FilterPanel/FilterPanel'
 import { PreviewPanel } from './components/PreviewPanel/PreviewPanel'
 import { ActionBar } from './components/ActionBar/ActionBar'
 import { useFilterApi } from './hooks/useFilterApi'
-import { useImageHistory } from './hooks/useImageHistory'
 import type {
   AppState,
   DownloadFormat,
   FilterName,
   FilterParameters,
   ImageSnapshot,
+  OriginalImageMeta,
+  SessionState,
 } from './types'
 import styles from './App.module.css'
 
@@ -18,6 +19,8 @@ const INITIAL_STATE: AppState = {
   sessionId: null,
   originalImageUrl: null,
   currentImageUrl: null,
+  originalMeta: null,
+  sessionState: null,
   isLoading: false,
   error: null,
 }
@@ -27,38 +30,88 @@ function stripExtension(fileName: string): string {
 }
 
 function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Došlo je do neočekivane greške.'
+  return error instanceof Error ? error.message : 'Doslo je do neocekivane greske.'
+}
+
+function normalizeFormatLabel(value: string | null | undefined): string {
+  if (!value) {
+    return 'Nepoznat'
+  }
+
+  const normalized = value.trim().toLowerCase()
+
+  if (normalized === 'jpg' || normalized === 'jpeg') {
+    return 'JPEG'
+  }
+
+  return normalized.toUpperCase()
+}
+
+function getOriginalMeta(file: File, state: SessionState): OriginalImageMeta {
+  const extension = file.name.includes('.') ? file.name.split('.').pop() : null
+  const mimeSuffix = file.type.includes('/') ? file.type.split('/').pop() : null
+
+  return {
+    format: normalizeFormatLabel(extension ?? mimeSuffix),
+    width: state.width,
+    height: state.height,
+  }
 }
 
 export default function App() {
   const api = useFilterApi()
-  const history = useImageHistory(null)
   const [appState, setAppState] = useState<AppState>(INITIAL_STATE)
   const [downloadFormat, setDownloadFormat] = useState<DownloadFormat>('png')
 
   const sessionIdRef = useRef<string | null>(null)
   const originalSnapshotRef = useRef<ImageSnapshot | null>(null)
-  const managedUrlsRef = useRef<Set<string>>(new Set())
+  const currentSnapshotRef = useRef<ImageSnapshot | null>(null)
+  const originalMetaRef = useRef<OriginalImageMeta | null>(null)
 
-  const clearManagedUrls = () => {
-    managedUrlsRef.current.forEach((url) => {
-      if (typeof URL.revokeObjectURL === 'function') {
-        URL.revokeObjectURL(url)
-      }
-    })
-    managedUrlsRef.current.clear()
-  }
-
-  const rememberSnapshot = (blob: Blob, name: string): ImageSnapshot => {
-    const url = URL.createObjectURL(blob)
-    managedUrlsRef.current.add(url)
-    return {
-      url,
-      blob,
-      name,
-      type: blob.type || 'image/png',
+  const revokeUrl = (url: string) => {
+    if (typeof URL.revokeObjectURL === 'function') {
+      URL.revokeObjectURL(url)
     }
   }
+
+  const replaceSnapshots = (original: ImageSnapshot | null, current: ImageSnapshot | null) => {
+    const previous = [originalSnapshotRef.current, currentSnapshotRef.current].filter(Boolean) as ImageSnapshot[]
+    const preserved = new Set<string>()
+
+    if (original) {
+      preserved.add(original.url)
+    }
+
+    if (current) {
+      preserved.add(current.url)
+    }
+
+    const released = new Set<string>()
+    previous.forEach((snapshot) => {
+      if (!released.has(snapshot.url) && !preserved.has(snapshot.url)) {
+        revokeUrl(snapshot.url)
+        released.add(snapshot.url)
+      }
+    })
+
+    originalSnapshotRef.current = original
+    currentSnapshotRef.current = current
+  }
+
+  const replaceCurrentSnapshot = (current: ImageSnapshot | null) => {
+    replaceSnapshots(originalSnapshotRef.current, current)
+  }
+
+  const clearSnapshots = () => {
+    replaceSnapshots(null, null)
+  }
+
+  const rememberSnapshot = (blob: Blob, name: string): ImageSnapshot => ({
+    url: URL.createObjectURL(blob),
+    blob,
+    name,
+    type: blob.type || 'image/png',
+  })
 
   const safeDeleteSession = async (sessionId: string | null) => {
     if (!sessionId) {
@@ -74,34 +127,40 @@ export default function App() {
 
   useEffect(() => {
     return () => {
-      clearManagedUrls()
+      clearSnapshots()
       void safeDeleteSession(sessionIdRef.current)
     }
   }, [])
 
-  const syncAppState = (sessionId: string | null, current: ImageSnapshot | null, loading = false, error: string | null = null) => {
+  const syncAppState = (
+    sessionId: string | null,
+    sessionState: SessionState | null,
+    loading = false,
+    error: string | null = null,
+  ) => {
     startTransition(() => {
       setAppState({
         sessionId,
         originalImageUrl: originalSnapshotRef.current?.url ?? null,
-        currentImageUrl: current?.url ?? null,
+        currentImageUrl: currentSnapshotRef.current?.url ?? null,
+        originalMeta: originalMetaRef.current,
+        sessionState,
         isLoading: loading,
         error,
       })
     })
   }
 
-  const replaceSessionWithSnapshot = async (snapshot: ImageSnapshot) => {
-    const previousSessionId = sessionIdRef.current
-    const file = new File([snapshot.blob], snapshot.name, { type: snapshot.type || 'image/png' })
-    const upload = await api.uploadImage(file)
-    sessionIdRef.current = upload.sessionId
-
-    if (previousSessionId && previousSessionId !== upload.sessionId) {
-      void safeDeleteSession(previousSessionId)
+  const syncOriginalMetaDimensions = (state: SessionState) => {
+    if (!originalMetaRef.current) {
+      return
     }
 
-    return upload.sessionId
+    originalMetaRef.current = {
+      ...originalMetaRef.current,
+      width: state.width,
+      height: state.height,
+    }
   }
 
   const handleUpload = async (file: File) => {
@@ -114,14 +173,12 @@ export default function App() {
       freshSessionId = upload.sessionId
       const previewBlob = await api.downloadImage(upload.sessionId, 'png')
       const previousSessionId = sessionIdRef.current
-
-      clearManagedUrls()
-
       const snapshot = rememberSnapshot(previewBlob, `${stripExtension(file.name)}.png`)
-      originalSnapshotRef.current = snapshot
-      history.reset(snapshot)
+
+      replaceSnapshots(snapshot, snapshot)
+      originalMetaRef.current = getOriginalMeta(file, upload.state)
       sessionIdRef.current = upload.sessionId
-      syncAppState(upload.sessionId, snapshot)
+      syncAppState(upload.sessionId, upload.state)
 
       if (previousSessionId && previousSessionId !== upload.sessionId) {
         void safeDeleteSession(previousSessionId)
@@ -139,18 +196,26 @@ export default function App() {
     }
   }
 
+  const updateSessionPreview = async (sessionId: string, blobPromise: Promise<Blob>, snapshotName: string) => {
+    const blob = await blobPromise
+    const state = await api.getSessionState(sessionId)
+    const snapshot = rememberSnapshot(blob, snapshotName)
+
+    replaceCurrentSnapshot(snapshot)
+    syncOriginalMetaDimensions(state)
+    syncAppState(sessionId, state)
+  }
+
   const handleApply = async (filter: FilterName, parameters: FilterParameters) => {
-    if (!sessionIdRef.current) {
+    const sessionId = sessionIdRef.current
+    if (!sessionId) {
       return
     }
 
     setAppState((current) => ({ ...current, isLoading: true, error: null }))
 
     try {
-      const blob = await api.applyFilter(sessionIdRef.current, filter, parameters)
-      const snapshot = rememberSnapshot(blob, `${filter.toLowerCase()}.png`)
-      history.push(snapshot)
-      syncAppState(sessionIdRef.current, snapshot)
+      await updateSessionPreview(sessionId, api.applyFilter(sessionId, filter, parameters), `${filter.toLowerCase()}.png`)
     } catch (error) {
       setAppState((current) => ({
         ...current,
@@ -161,17 +226,15 @@ export default function App() {
   }
 
   const handleUndo = async () => {
-    const target = history.peekUndo
-    if (!target) {
+    const sessionId = sessionIdRef.current
+    if (!sessionId) {
       return
     }
 
     setAppState((current) => ({ ...current, isLoading: true, error: null }))
 
     try {
-      const sessionId = await replaceSessionWithSnapshot(target)
-      history.undo()
-      syncAppState(sessionId, target)
+      await updateSessionPreview(sessionId, api.undoSession(sessionId), 'undo.png')
     } catch (error) {
       setAppState((current) => ({
         ...current,
@@ -182,17 +245,15 @@ export default function App() {
   }
 
   const handleRedo = async () => {
-    const target = history.peekRedo
-    if (!target) {
+    const sessionId = sessionIdRef.current
+    if (!sessionId) {
       return
     }
 
     setAppState((current) => ({ ...current, isLoading: true, error: null }))
 
     try {
-      const sessionId = await replaceSessionWithSnapshot(target)
-      history.redo()
-      syncAppState(sessionId, target)
+      await updateSessionPreview(sessionId, api.redoSession(sessionId), 'redo.png')
     } catch (error) {
       setAppState((current) => ({
         ...current,
@@ -203,17 +264,34 @@ export default function App() {
   }
 
   const handleRevert = async () => {
-    const target = originalSnapshotRef.current
-    if (!target) {
+    const sessionId = sessionIdRef.current
+    if (!sessionId) {
       return
     }
 
     setAppState((current) => ({ ...current, isLoading: true, error: null }))
 
     try {
-      const sessionId = await replaceSessionWithSnapshot(target)
-      history.revert(target)
-      syncAppState(sessionId, target)
+      await updateSessionPreview(sessionId, api.revertSession(sessionId), 'original.png')
+    } catch (error) {
+      setAppState((current) => ({
+        ...current,
+        isLoading: false,
+        error: getErrorMessage(error),
+      }))
+    }
+  }
+
+  const handleRotateRight = async () => {
+    const sessionId = sessionIdRef.current
+    if (!sessionId) {
+      return
+    }
+
+    setAppState((current) => ({ ...current, isLoading: true, error: null }))
+
+    try {
+      await updateSessionPreview(sessionId, api.rotateSession(sessionId), 'rotate-right.png')
     } catch (error) {
       setAppState((current) => ({
         ...current,
@@ -224,22 +302,21 @@ export default function App() {
   }
 
   const handleDownload = async () => {
-    if (!sessionIdRef.current) {
+    const sessionId = sessionIdRef.current
+    if (!sessionId) {
       return
     }
 
     setAppState((current) => ({ ...current, isLoading: true, error: null }))
 
     try {
-      const blob = await api.downloadImage(sessionIdRef.current, downloadFormat)
+      const blob = await api.downloadImage(sessionId, downloadFormat)
       const url = URL.createObjectURL(blob)
       const anchor = document.createElement('a')
       anchor.href = url
       anchor.download = `krlens-${Date.now()}.${downloadFormat}`
       anchor.click()
-      if (typeof URL.revokeObjectURL === 'function') {
-        URL.revokeObjectURL(url)
-      }
+      revokeUrl(url)
       setAppState((current) => ({ ...current, isLoading: false, error: null }))
     } catch (error) {
       setAppState((current) => ({
@@ -250,26 +327,16 @@ export default function App() {
     }
   }
 
-  const hasSession = Boolean(appState.sessionId)
-  const canRevert =
-    Boolean(originalSnapshotRef.current) &&
-    originalSnapshotRef.current?.url !== history.current?.url
+  const sessionState = appState.sessionState
+  const hasSession = Boolean(appState.sessionId && appState.currentImageUrl)
+  const canRevert = Boolean(sessionState && sessionState.currentStep > 0)
 
   return (
     <main className={styles.shell}>
       <header className={styles.masthead}>
         <div className={styles.titleBlock}>
-          <p className={styles.eyebrow}>KrLens</p>
+          <img className={styles.logo} src="/KrLens-Logo.svg" alt="KrLens logo" />
           <h1>Multimedijalni studio za server-side obradu slike</h1>
-          <p>
-            Jedan kadar ulazi u sesiju, filteri se izvršavaju na backendu, a klijent čuva lokalnu
-            istoriju za brzi povratak na prethodna stanja.
-          </p>
-        </div>
-        <div className={styles.statusCard}>
-          <span>Aktivna sesija</span>
-          <strong>{appState.sessionId ? appState.sessionId.slice(0, 8) : 'nema'}</strong>
-          <small>{appState.currentImageUrl ? 'Preview je spreman za dalju obradu.' : 'Upload čeka prvi kadar.'}</small>
         </div>
       </header>
 
@@ -288,25 +355,36 @@ export default function App() {
             <PreviewPanel
               originalImageUrl={appState.originalImageUrl}
               currentImageUrl={appState.currentImageUrl}
+              originalMeta={appState.originalMeta}
               isLoading={appState.isLoading}
               error={appState.error}
             />
           </div>
+
           <ActionBar
-            canUndo={history.canUndo}
-            canRedo={history.canRedo}
+            canUndo={Boolean(sessionState?.canUndo)}
+            canRedo={Boolean(sessionState?.canRedo)}
             canRevert={canRevert}
+            canRotate={hasSession}
             canDownload={hasSession}
             isBusy={appState.isLoading}
             downloadFormat={downloadFormat}
             onUndo={handleUndo}
             onRedo={handleRedo}
             onRevert={handleRevert}
+            onRotateRight={handleRotateRight}
             onDownload={handleDownload}
             onDownloadFormatChange={setDownloadFormat}
           />
         </div>
       </section>
+
+      <footer className={styles.footer}>
+        <p>All rights reserved. KrLens je open source projekat.</p>
+        <a href="https://github.com/krsticlazar/KrLens" target="_blank" rel="noreferrer">
+          https://github.com/krsticlazar/KrLens
+        </a>
+      </footer>
     </main>
   )
 }

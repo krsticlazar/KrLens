@@ -1,3 +1,5 @@
+using System.Drawing;
+using System.Drawing.Imaging;
 using KrLensServer.Core.Models;
 
 namespace KrLensServer.Core.Filters;
@@ -16,11 +18,11 @@ internal static class BitmapFilterConvolution
         public int BottomMid;
         public int BottomRight;
         public int Factor = 1;
-        public int Offset;
+        public int Offset = 0;
 
-        public void SetAll(int nVal)
+        public void SetAll(int value)
         {
-            TopLeft = TopMid = TopRight = MidLeft = Pixel = MidRight = BottomLeft = BottomMid = BottomRight = nVal;
+            TopLeft = TopMid = TopRight = MidLeft = Pixel = MidRight = BottomLeft = BottomMid = BottomRight = value;
         }
     }
 
@@ -51,7 +53,6 @@ internal static class BitmapFilterConvolution
             BottomRight = 1,
             Pixel = 0,
             Factor = 1,
-            Offset = 0,
         };
 
         return Conv3x3Absolute(source, horizontal);
@@ -69,7 +70,6 @@ internal static class BitmapFilterConvolution
             BottomRight = 1,
             Pixel = 0,
             Factor = 1,
-            Offset = 0,
         };
 
         return Conv3x3Absolute(source, vertical);
@@ -85,121 +85,94 @@ internal static class BitmapFilterConvolution
         };
     }
 
-    private static unsafe BitmapBuffer Conv3x3(BitmapBuffer source, ConvMatrix matrix)
+    private static BitmapBuffer Conv3x3(BitmapBuffer source, ConvMatrix matrix)
     {
-        var destination = new BitmapBuffer(source.Width, source.Height, source.Channels);
-        var width = source.Width;
-        var height = source.Height;
-        var channels = source.Channels;
-
-        if (matrix.Factor == 0)
-        {
-            matrix.Factor = 1;
-        }
-
-        fixed (byte* pSrcBase = source.Pixels)
-        fixed (byte* pDstBase = destination.Pixels)
-        {
-            byte* pSrc = pSrcBase;
-            byte* pDst = pDstBase;
-
-            for (var y = 0; y < height; ++y)
-            {
-                for (var x = 0; x < width; ++x)
-                {
-                    for (var channel = 0; channel < channels; ++channel)
-                    {
-                        var nPixel =
-                            GetPixel(source, pSrcBase, x - 1, y - 1, channel) * matrix.TopLeft +
-                            GetPixel(source, pSrcBase, x, y - 1, channel) * matrix.TopMid +
-                            GetPixel(source, pSrcBase, x + 1, y - 1, channel) * matrix.TopRight +
-                            GetPixel(source, pSrcBase, x - 1, y, channel) * matrix.MidLeft +
-                            GetPixel(source, pSrcBase, x, y, channel) * matrix.Pixel +
-                            GetPixel(source, pSrcBase, x + 1, y, channel) * matrix.MidRight +
-                            GetPixel(source, pSrcBase, x - 1, y + 1, channel) * matrix.BottomLeft +
-                            GetPixel(source, pSrcBase, x, y + 1, channel) * matrix.BottomMid +
-                            GetPixel(source, pSrcBase, x + 1, y + 1, channel) * matrix.BottomRight;
-
-                        nPixel = (nPixel / matrix.Factor) + matrix.Offset;
-
-                        if (nPixel < 0) nPixel = 0;
-                        if (nPixel > 255) nPixel = 255;
-
-                        pDst[((y * width) + x) * channels + channel] = (byte)nPixel;
-                    }
-                }
-            }
-        }
-
-        return destination;
+        return ApplyMatrix(source, matrix, absolute: false);
     }
 
-    private static unsafe BitmapBuffer Conv3x3Absolute(BitmapBuffer source, ConvMatrix matrix)
+    private static BitmapBuffer Conv3x3Absolute(BitmapBuffer source, ConvMatrix matrix)
     {
-        var destination = new BitmapBuffer(source.Width, source.Height, source.Channels);
-        var width = source.Width;
-        var height = source.Height;
-        var channels = source.Channels;
+        return ApplyMatrix(source, matrix, absolute: true);
+    }
 
-        if (matrix.Factor == 0)
-        {
-            matrix.Factor = 1;
-        }
+    private static BitmapBuffer ApplyMatrix(BitmapBuffer source, ConvMatrix matrix, bool absolute)
+    {
+        using var sourceBitmap = BitmapFilterSupport.CreateBitmap(source);
+        using var destinationBitmap = BitmapFilterSupport.CreateEmpty(sourceBitmap);
+        var rect = new Rectangle(0, 0, sourceBitmap.Width, sourceBitmap.Height);
+        var sourceData = sourceBitmap.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+        var destinationData = destinationBitmap.LockBits(rect, ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);
 
-        fixed (byte* pSrcBase = source.Pixels)
-        fixed (byte* pDstBase = destination.Pixels)
+        try
         {
-            for (var y = 0; y < height; ++y)
+            if (matrix.Factor == 0)
             {
-                for (var x = 0; x < width; ++x)
+                matrix.Factor = 1;
+            }
+
+            unsafe
+            {
+                byte* pSrcBase = (byte*)(void*)sourceData.Scan0;
+                byte* pDst = (byte*)(void*)destinationData.Scan0;
+                var strideSrc = sourceData.Stride;
+                var strideDst = destinationData.Stride;
+                var noffset = strideDst - (destinationBitmap.Width * 3);
+
+                for (var y = 0; y < destinationBitmap.Height; ++y)
                 {
-                    for (var channel = 0; channel < channels; ++channel)
+                    for (var x = 0; x < destinationBitmap.Width; ++x)
                     {
-                        var nPixel =
-                            GetPixel(source, pSrcBase, x - 1, y - 1, channel) * matrix.TopLeft +
-                            GetPixel(source, pSrcBase, x, y - 1, channel) * matrix.TopMid +
-                            GetPixel(source, pSrcBase, x + 1, y - 1, channel) * matrix.TopRight +
-                            GetPixel(source, pSrcBase, x - 1, y, channel) * matrix.MidLeft +
-                            GetPixel(source, pSrcBase, x, y, channel) * matrix.Pixel +
-                            GetPixel(source, pSrcBase, x + 1, y, channel) * matrix.MidRight +
-                            GetPixel(source, pSrcBase, x - 1, y + 1, channel) * matrix.BottomLeft +
-                            GetPixel(source, pSrcBase, x, y + 1, channel) * matrix.BottomMid +
-                            GetPixel(source, pSrcBase, x + 1, y + 1, channel) * matrix.BottomRight;
+                        for (var channel = 0; channel < 3; ++channel)
+                        {
+                            var pixel =
+                                GetPixel(pSrcBase, strideSrc, sourceBitmap.Width, sourceBitmap.Height, x - 1, y - 1, channel) * matrix.TopLeft +
+                                GetPixel(pSrcBase, strideSrc, sourceBitmap.Width, sourceBitmap.Height, x, y - 1, channel) * matrix.TopMid +
+                                GetPixel(pSrcBase, strideSrc, sourceBitmap.Width, sourceBitmap.Height, x + 1, y - 1, channel) * matrix.TopRight +
+                                GetPixel(pSrcBase, strideSrc, sourceBitmap.Width, sourceBitmap.Height, x - 1, y, channel) * matrix.MidLeft +
+                                GetPixel(pSrcBase, strideSrc, sourceBitmap.Width, sourceBitmap.Height, x, y, channel) * matrix.Pixel +
+                                GetPixel(pSrcBase, strideSrc, sourceBitmap.Width, sourceBitmap.Height, x + 1, y, channel) * matrix.MidRight +
+                                GetPixel(pSrcBase, strideSrc, sourceBitmap.Width, sourceBitmap.Height, x - 1, y + 1, channel) * matrix.BottomLeft +
+                                GetPixel(pSrcBase, strideSrc, sourceBitmap.Width, sourceBitmap.Height, x, y + 1, channel) * matrix.BottomMid +
+                                GetPixel(pSrcBase, strideSrc, sourceBitmap.Width, sourceBitmap.Height, x + 1, y + 1, channel) * matrix.BottomRight;
 
-                        nPixel = Math.Abs(nPixel / matrix.Factor) + matrix.Offset;
+                            pixel = absolute
+                                ? Math.Abs(pixel / matrix.Factor) + matrix.Offset
+                                : (pixel / matrix.Factor) + matrix.Offset;
 
-                        if (nPixel < 0) nPixel = 0;
-                        if (nPixel > 255) nPixel = 255;
+                            pDst[channel] = (byte)Math.Clamp(pixel, 0, 255);
+                        }
 
-                        pDstBase[((y * width) + x) * channels + channel] = (byte)nPixel;
+                        pDst += 3;
                     }
+
+                    pDst += noffset;
                 }
             }
         }
+        finally
+        {
+            sourceBitmap.UnlockBits(sourceData);
+            destinationBitmap.UnlockBits(destinationData);
+        }
 
-        return destination;
+        return BitmapFilterSupport.ToBuffer(destinationBitmap);
     }
 
     private static BitmapBuffer CombineEdges(BitmapBuffer horizontal, BitmapBuffer vertical)
     {
-        var destination = new BitmapBuffer(horizontal.Width, horizontal.Height, horizontal.Channels);
-        for (var i = 0; i < destination.Pixels.Length; i++)
+        var destination = new BitmapBuffer(horizontal.Width, horizontal.Height, 3);
+
+        for (var i = 0; i < destination.Pixels.Length; ++i)
         {
-            var nPixel = Math.Sqrt((horizontal.Pixels[i] * horizontal.Pixels[i]) + (vertical.Pixels[i] * vertical.Pixels[i]));
-            if (nPixel > 255) nPixel = 255;
-            destination.Pixels[i] = (byte)nPixel;
+            var pixel = Math.Sqrt((horizontal.Pixels[i] * horizontal.Pixels[i]) + (vertical.Pixels[i] * vertical.Pixels[i]));
+            destination.Pixels[i] = (byte)Math.Clamp((int)Math.Round(pixel), 0, 255);
         }
 
         return destination;
     }
 
-    private static unsafe byte GetPixel(BitmapBuffer source, byte* pSrcBase, int x, int y, int channel)
+    private static unsafe byte GetPixel(byte* scan0, int stride, int width, int height, int x, int y, int channel)
     {
-        if (x < 0) x = 0;
-        if (y < 0) y = 0;
-        if (x >= source.Width) x = source.Width - 1;
-        if (y >= source.Height) y = source.Height - 1;
-
-        return pSrcBase[((y * source.Width) + x) * source.Channels + channel];
+        return BitmapFilterSupport.GetChannel(scan0, stride, width, height, x, y, channel);
     }
 }

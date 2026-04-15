@@ -5,8 +5,8 @@
   gap: 1rem;
   padding: 1rem 1.1rem;
   border-radius: 1.4rem;
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(22, 49, 58, 0.12);
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
 }
 
 .actions,
@@ -21,8 +21,8 @@
 .download select {
   min-height: 2.8rem;
   border-radius: 999px;
-  border: 1px solid rgba(22, 49, 58, 0.14);
-  background: #fff;
+  border: 1px solid rgba(3, 110, 168, 0.18);
+  background: rgba(255, 255, 255, 0.94);
   padding: 0 1rem;
   color: var(--ink);
 }
@@ -30,15 +30,33 @@
 .bar button {
   cursor: pointer;
   font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   transition:
     transform 160ms ease,
     background 160ms ease,
     color 160ms ease;
 }
 
+.iconButton {
+  width: 2.8rem;
+  min-width: 2.8rem;
+  aspect-ratio: 1;
+  padding: 0;
+  line-height: 0;
+}
+
+.icon {
+  width: 1.3rem;
+  height: 1.3rem;
+  display: block;
+  flex: none;
+}
+
 .bar button:hover:enabled {
   transform: translateY(-1px);
-  background: var(--accent-strong);
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
   color: #f8fffd;
 }
 

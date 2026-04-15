@@ -1,8 +1,10 @@
 import styles from './PreviewPanel.module.css'
+import type { OriginalImageMeta } from '../../types'
 
 interface PreviewPanelProps {
   originalImageUrl: string | null
   currentImageUrl: string | null
+  originalMeta: OriginalImageMeta | null
   isLoading: boolean
   error: string | null
 }
@@ -10,9 +12,14 @@ interface PreviewPanelProps {
 export function PreviewPanel({
   originalImageUrl,
   currentImageUrl,
+  originalMeta,
   isLoading,
   error,
 }: PreviewPanelProps) {
+  const originalInfo = originalMeta
+    ? `Format: ${originalMeta.format} | ${originalMeta.width} x ${originalMeta.height}`
+    : 'Format: - | Dimenzije: -'
+
   return (
     <section className={styles.panel}>
       <div className={styles.header}>
@@ -20,7 +27,7 @@ export function PreviewPanel({
           <p className={styles.eyebrow}>Preview</p>
           <h2>Radna slika</h2>
         </div>
-        <p className={styles.copy}>Aktivni rezultat zauzima glavni kadar, dok original ostaje kao referenca.</p>
+        <p className={styles.copy}>{originalInfo}</p>
       </div>
 
       <div className={styles.stage}>
@@ -28,8 +35,8 @@ export function PreviewPanel({
           <img className={styles.mainImage} src={currentImageUrl} alt="Trenutni preview" />
         ) : (
           <div className={styles.placeholder}>
-            <strong>Nema učitane slike</strong>
-            <span>Počni upload-om sa leve strane da bi video preview i aktivirao filtere.</span>
+            <strong>Nema ucitane slike</strong>
+            <span>Pocni upload-om sa leve strane da bi video preview i aktivirao filtere.</span>
           </div>
         )}
 
@@ -43,7 +50,7 @@ export function PreviewPanel({
         {isLoading && (
           <div className={styles.overlay} role="status" aria-live="polite">
             <div className={styles.spinner} />
-            <span>Server obrađuje sliku...</span>
+            <span>Server obradjuje sliku...</span>
           </div>
         )}
       </div>

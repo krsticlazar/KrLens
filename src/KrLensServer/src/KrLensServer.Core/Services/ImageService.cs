@@ -1,8 +1,9 @@
+using System.Drawing;
+using System.Drawing.Imaging;
+using KrLensServer.Core.Filters;
 using KrLensServer.Core.Exceptions;
 using KrLensServer.Core.Msi;
 using KrLensServer.Core.Models;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
 
 namespace KrLensServer.Core.Services;
 
@@ -25,31 +26,22 @@ public sealed class ImageService
         var format = NormalizeFormat(fileNameOrExtension);
         if (format == "msi")
         {
-            using var memory = new MemoryStream();
-            await stream.CopyToAsync(memory, cancellationToken);
-            return _msiDecoder.Decode(memory.ToArray());
+            using var rawMemory = new MemoryStream();
+            await stream.CopyToAsync(rawMemory, cancellationToken);
+            return _msiDecoder.Decode(rawMemory.ToArray());
         }
 
-        stream.Position = 0;
-        using var image = await Image.LoadAsync<Rgba32>(stream, cancellationToken);
-        var pixels = new byte[BitmapBuffer.GetPixelArrayLength(image.Width, image.Height, 3)];
-
-        image.ProcessPixelRows(accessor =>
+        await using var memory = new MemoryStream();
+        if (stream.CanSeek)
         {
-            for (var y = 0; y < accessor.Height; y++)
-            {
-                var row = accessor.GetRowSpan(y);
-                for (var x = 0; x < row.Length; x++)
-                {
-                    var offset = ((y * image.Width) + x) * 3;
-                    pixels[offset] = row[x].R;
-                    pixels[offset + 1] = row[x].G;
-                    pixels[offset + 2] = row[x].B;
-                }
-            }
-        });
+            stream.Position = 0;
+        }
 
-        return new BitmapBuffer(image.Width, image.Height, 3, pixels, takeOwnership: true);
+        await stream.CopyToAsync(memory, cancellationToken);
+        memory.Position = 0;
+
+        using var bitmap = new Bitmap(memory);
+        return BitmapFilterSupport.ToBuffer(bitmap);
     }
 
     public async Task<byte[]> EncodeAsync(BitmapBuffer buffer, string format, CancellationToken cancellationToken = default)
@@ -63,43 +55,11 @@ public sealed class ImageService
             return _msiEncoder.Encode(buffer);
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
+        using var bitmap = BitmapFilterSupport.CreateBitmap(buffer);
         using var memory = new MemoryStream();
-        if (buffer.Channels == 1)
-        {
-            using var image = new Image<L8>(buffer.Width, buffer.Height);
-            image.ProcessPixelRows(accessor =>
-            {
-                for (var y = 0; y < accessor.Height; y++)
-                {
-                    var row = accessor.GetRowSpan(y);
-                    for (var x = 0; x < row.Length; x++)
-                    {
-                        row[x] = new L8(buffer.Pixels[(y * buffer.Width) + x]);
-                    }
-                }
-            });
-
-            await SaveStandardAsync(image, normalized, memory, cancellationToken);
-        }
-        else
-        {
-            using var image = new Image<Rgb24>(buffer.Width, buffer.Height);
-            image.ProcessPixelRows(accessor =>
-            {
-                for (var y = 0; y < accessor.Height; y++)
-                {
-                    var row = accessor.GetRowSpan(y);
-                    for (var x = 0; x < row.Length; x++)
-                    {
-                        var offset = ((y * buffer.Width) + x) * 3;
-                        row[x] = new Rgb24(buffer.Pixels[offset], buffer.Pixels[offset + 1], buffer.Pixels[offset + 2]);
-                    }
-                }
-            });
-
-            await SaveStandardAsync(image, normalized, memory, cancellationToken);
-        }
-
+        bitmap.Save(memory, GetImageFormat(normalized));
+        await memory.FlushAsync(cancellationToken);
         return memory.ToArray();
     }
 
@@ -141,19 +101,14 @@ public sealed class ImageService
         };
     }
 
-    private static Task SaveStandardAsync<TPixel>(
-        Image<TPixel> image,
-        string format,
-        Stream output,
-        CancellationToken cancellationToken)
-        where TPixel : unmanaged, IPixel<TPixel>
+    private static ImageFormat GetImageFormat(string format)
     {
         return format switch
         {
-            "png" => image.SaveAsPngAsync(output, cancellationToken),
-            "jpeg" => image.SaveAsJpegAsync(output, cancellationToken),
-            "bmp" => image.SaveAsBmpAsync(output, cancellationToken),
-            "gif" => image.SaveAsGifAsync(output, cancellationToken),
+            "png" => ImageFormat.Png,
+            "jpeg" => ImageFormat.Jpeg,
+            "bmp" => ImageFormat.Bmp,
+            "gif" => ImageFormat.Gif,
             _ => throw new UnsupportedImageFormatException(format),
         };
     }
