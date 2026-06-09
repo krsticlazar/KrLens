@@ -1,0 +1,13 @@
+index,source_name,source_extension,source_width,source_height,source_size_bytes,benchmark_file,benchmark_width,benchmark_height,benchmark_size_bytes
+1,1.png,.png,3831,2160,12483704,bench_01.png,1024,768,1266547
+2,7dbdc4b2aea5c3ee84fabe0cfdeadb09.jpg,.jpg,1200,1440,161998,bench_02.png,1024,768,794998
+3,daminGambit.jpg,.jpg,5000,2813,1233025,bench_03.png,1024,768,738319
+4,Gemini_Generated_Image_4xfwna4xfwna4xfw.png,.png,1024,1024,1869476,bench_04.png,1024,768,999351
+5,Gemini_Generated_Image_mxni0xmxni0xmxni.png,.png,1024,1024,1801619,bench_05.png,1024,768,914690
+6,koichi_hirose_wallpaper_by_spammboy_df0c6mi-fullview.jpg,.jpg,1280,720,393279,bench_06.png,1024,768,1410525
+7,krst_terminal.jpg,.jpg,1920,1080,121104,bench_07.png,1024,768,148329
+8,krst_terminal.png,.png,1920,1080,305284,bench_08.png,1024,768,112784
+9,logo.png,.png,1228,1228,54881,bench_09.png,1024,768,56505
+10,piqsels.com-id-zvwxj.jpg,.jpg,5926,3951,4249125,bench_10.png,1024,768,1726819
+11,"Sveti_Đorđe,_Galerija_Matice_Srpske.jpg",.jpg,2000,2999,2417213,bench_11.png,1024,768,1136791
+12,"Sveti_Đorđe,_Galerija_Matice_Srpske_16_9.png",.png,2000,1125,2647808,bench_12.png,1024,768,1066608

@@ -1,9 +1,7 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using KrLensServer.API.Models;
-using KrLensServer.Core.Filters;
 using KrLensServer.Core.Logging;
-using KrLensServer.Core.Models;
 using KrLensServer.Core.Services;
 
 namespace KrLensServer.API.Controllers;
@@ -13,21 +11,18 @@ namespace KrLensServer.API.Controllers;
 public sealed class FilterController : ControllerBase
 {
     private readonly SessionStore _sessionStore;
-    private readonly FilterRegistry _filterRegistry;
-    private readonly FilterPipeline _filterPipeline;
+    private readonly FilterService _filterService;
     private readonly ImageService _imageService;
     private readonly FilterLogger _filterLogger;
 
     public FilterController(
         SessionStore sessionStore,
-        FilterRegistry filterRegistry,
-        FilterPipeline filterPipeline,
+        FilterService filterService,
         ImageService imageService,
         FilterLogger filterLogger)
     {
         _sessionStore = sessionStore;
-        _filterRegistry = filterRegistry;
-        _filterPipeline = filterPipeline;
+        _filterService = filterService;
         _imageService = imageService;
         _filterLogger = filterLogger;
     }
@@ -38,12 +33,11 @@ public sealed class FilterController : ControllerBase
         ValidateRequest(request.SessionId, request.Filter);
 
         var current = _sessionStore.GetRequired(request.SessionId);
-        var filter = _filterRegistry.GetRequired(request.Filter);
         var stopwatch = Stopwatch.StartNew();
 
         try
         {
-            var result = filter.Apply(current, request.Parameters);
+            var result = _filterService.Apply(current, request.Filter, request.Parameters);
             stopwatch.Stop();
             _sessionStore.Push(request.SessionId, result, request.Filter, request.Parameters);
             _filterLogger.LogFilter(
@@ -80,7 +74,7 @@ public sealed class FilterController : ControllerBase
 
         try
         {
-            var result = _filterPipeline.Apply(current, request.Filters);
+            var result = _filterService.ApplyBatch(current, request.Filters);
             stopwatch.Stop();
             _sessionStore.Push(request.SessionId, result, "Batch", null);
             _filterLogger.LogFilter(

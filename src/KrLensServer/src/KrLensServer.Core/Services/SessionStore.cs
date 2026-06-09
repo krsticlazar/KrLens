@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Threading.Tasks;
 using KrLensServer.Core.Exceptions;
 using KrLensServer.Core.Models;
 
@@ -20,41 +21,19 @@ public sealed class SessionStore
 
     public BitmapBuffer GetRequired(string sessionId)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(sessionId);
-
-        if (_sessions.TryGetValue(sessionId, out var entry))
-        {
-            return entry.GetCurrent();
-        }
-
-        throw new SessionNotFoundException(sessionId);
+        return GetEntry(sessionId).GetCurrent();
     }
 
     public SessionState GetState(string sessionId)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(sessionId);
-
-        if (_sessions.TryGetValue(sessionId, out var entry))
-        {
-            return entry.GetState();
-        }
-
-        throw new SessionNotFoundException(sessionId);
+        return GetEntry(sessionId).GetState();
     }
 
     public void Push(string sessionId, BitmapBuffer image, string filter, IReadOnlyDictionary<string, double>? parameters)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(sessionId);
         ArgumentNullException.ThrowIfNull(image);
         ArgumentException.ThrowIfNullOrWhiteSpace(filter);
-
-        if (_sessions.TryGetValue(sessionId, out var entry))
-        {
-            entry.Push(image, filter, parameters);
-            return;
-        }
-
-        throw new SessionNotFoundException(sessionId);
+        GetEntry(sessionId).Push(image, filter, parameters);
     }
 
     public BitmapBuffer Undo(string sessionId)
@@ -99,27 +78,22 @@ public sealed class SessionStore
     {
         private readonly object _sync = new();
         private readonly string _sessionId;
-        private BitmapBuffer _original;
         private readonly List<BitmapBuffer> _snapshots;
         private readonly List<HistoryRecord> _history;
-        private DateTimeOffset _lastAccessedUtc;
         private int _currentStep;
         private bool _historyNavigationSuspended;
 
         public SessionEntry(string sessionId, BitmapBuffer original)
         {
             _sessionId = sessionId;
-            _original = original;
             _snapshots = new List<BitmapBuffer> { original };
             _history = new List<HistoryRecord>();
-            _lastAccessedUtc = DateTimeOffset.UtcNow;
         }
 
         public BitmapBuffer GetCurrent()
         {
             lock (_sync)
             {
-                Touch();
                 return _snapshots[_currentStep];
             }
         }
@@ -128,7 +102,6 @@ public sealed class SessionStore
         {
             lock (_sync)
             {
-                Touch();
                 var current = _snapshots[_currentStep];
                 return new SessionState(
                     _sessionId,
@@ -148,7 +121,6 @@ public sealed class SessionStore
         {
             lock (_sync)
             {
-                Touch();
                 _historyNavigationSuspended = false;
 
                 if (_currentStep < _history.Count)
@@ -174,7 +146,6 @@ public sealed class SessionStore
         {
             lock (_sync)
             {
-                Touch();
                 _historyNavigationSuspended = false;
                 if (_currentStep > 0)
                 {
@@ -189,7 +160,6 @@ public sealed class SessionStore
         {
             lock (_sync)
             {
-                Touch();
                 _historyNavigationSuspended = false;
                 if (_currentStep < _history.Count)
                 {
@@ -204,7 +174,6 @@ public sealed class SessionStore
         {
             lock (_sync)
             {
-                Touch();
                 _historyNavigationSuspended = false;
                 _currentStep = 0;
                 return _snapshots[0];
@@ -215,22 +184,14 @@ public sealed class SessionStore
         {
             lock (_sync)
             {
-                Touch();
-
                 for (var index = 0; index < _snapshots.Count; ++index)
                 {
                     _snapshots[index] = RotateClockwise(_snapshots[index]);
                 }
 
-                _original = _snapshots[0];
                 _historyNavigationSuspended = true;
                 return _snapshots[_currentStep];
             }
-        }
-
-        private void Touch()
-        {
-            _lastAccessedUtc = DateTimeOffset.UtcNow;
         }
 
         private static IReadOnlyDictionary<string, double>? CopyParameters(IReadOnlyDictionary<string, double>? parameters)
@@ -246,10 +207,9 @@ public sealed class SessionStore
         private static BitmapBuffer RotateClockwise(BitmapBuffer source)
         {
             var destination = new BitmapBuffer(source.Height, source.Width, source.Channels);
-            var destinationPixels = destination.Pixels;
             var channels = source.Channels;
 
-            for (var y = 0; y < source.Height; ++y)
+            Parallel.For(0, source.Height, y =>
             {
                 for (var x = 0; x < source.Width; ++x)
                 {
@@ -257,9 +217,9 @@ public sealed class SessionStore
                     var destinationX = source.Height - 1 - y;
                     var destinationY = x;
                     var destinationOffset = ((destinationY * destination.Width) + destinationX) * channels;
-                    Buffer.BlockCopy(source.Pixels, sourceOffset, destinationPixels, destinationOffset, channels);
+                    Buffer.BlockCopy(source.Pixels, sourceOffset, destination.Pixels, destinationOffset, channels);
                 }
-            }
+            });
 
             return destination;
         }

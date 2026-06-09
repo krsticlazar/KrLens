@@ -1,10 +1,11 @@
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Threading.Tasks;
 using KrLensServer.Core.Models;
 
-namespace KrLensServer.Core.Filters;
+namespace KrLensServer.Core.Services;
 
-internal static class BitmapFilterSupport
+internal static class BitmapBufferCodec
 {
     public static Bitmap CreateBitmap(BitmapBuffer source)
     {
@@ -16,40 +17,40 @@ internal static class BitmapFilterSupport
 
         try
         {
-            var scan0 = bitmapData.Scan0;
-            var stride = bitmapData.Stride;
+            var width = bitmap.Width;
+            var height = bitmap.Height;
+            var channels = source.Channels;
 
             unsafe
             {
-                byte* p = (byte*)(void*)scan0;
-                var noffset = stride - (bitmap.Width * 3);
-                var sourceIndex = 0;
+                byte* start = (byte*)(void*)bitmapData.Scan0;
+                var stride = bitmapData.Stride;
 
-                for (var y = 0; y < bitmap.Height; ++y)
+                Parallel.For(0, height, y =>
                 {
-                    for (var x = 0; x < bitmap.Width; ++x)
+                    byte* current = start + (y * stride);
+                    var sourceIndex = y * width * channels;
+
+                    for (var x = 0; x < width; ++x)
                     {
-                        if (source.Channels == 1)
+                        if (channels == 1)
                         {
-                            var value = source.Pixels[sourceIndex];
-                            p[0] = value;
-                            p[1] = value;
-                            p[2] = value;
-                            ++sourceIndex;
+                            var value = source.Pixels[sourceIndex++];
+                            current[0] = value;
+                            current[1] = value;
+                            current[2] = value;
                         }
                         else
                         {
-                            p[0] = source.Pixels[sourceIndex + 2];
-                            p[1] = source.Pixels[sourceIndex + 1];
-                            p[2] = source.Pixels[sourceIndex];
+                            current[0] = source.Pixels[sourceIndex + 2];
+                            current[1] = source.Pixels[sourceIndex + 1];
+                            current[2] = source.Pixels[sourceIndex];
                             sourceIndex += 3;
                         }
 
-                        p += 3;
+                        current += 3;
                     }
-
-                    p += noffset;
-                }
+                });
             }
         }
         finally
@@ -71,28 +72,28 @@ internal static class BitmapFilterSupport
 
         try
         {
-            var scan0 = bitmapData.Scan0;
-            var stride = bitmapData.Stride;
-            var destinationIndex = 0;
+            var width = normalized.Width;
+            var height = normalized.Height;
 
             unsafe
             {
-                byte* p = (byte*)(void*)scan0;
-                var noffset = stride - (normalized.Width * 3);
+                byte* start = (byte*)(void*)bitmapData.Scan0;
+                var stride = bitmapData.Stride;
 
-                for (var y = 0; y < normalized.Height; ++y)
+                Parallel.For(0, height, y =>
                 {
-                    for (var x = 0; x < normalized.Width; ++x)
-                    {
-                        buffer.Pixels[destinationIndex] = p[2];
-                        buffer.Pixels[destinationIndex + 1] = p[1];
-                        buffer.Pixels[destinationIndex + 2] = p[0];
-                        destinationIndex += 3;
-                        p += 3;
-                    }
+                    byte* current = start + (y * stride);
+                    var destinationIndex = y * width * 3;
 
-                    p += noffset;
-                }
+                    for (var x = 0; x < width; ++x)
+                    {
+                        buffer.Pixels[destinationIndex] = current[2];
+                        buffer.Pixels[destinationIndex + 1] = current[1];
+                        buffer.Pixels[destinationIndex + 2] = current[0];
+                        destinationIndex += 3;
+                        current += 3;
+                    }
+                });
             }
         }
         finally

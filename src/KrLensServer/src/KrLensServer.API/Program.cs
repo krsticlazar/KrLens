@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Http.Features;
 using KrLensServer.API.Middleware;
 using KrLensServer.API.Models;
-using KrLensServer.Core.Filters;
 using KrLensServer.Core.Logging;
 using KrLensServer.Core.Msi;
 using KrLensServer.Core.Services;
@@ -30,22 +29,9 @@ builder.Services.AddCors(options =>
 builder.Services.AddSingleton<MsiEncoder>();
 builder.Services.AddSingleton<MsiDecoder>();
 builder.Services.AddSingleton<ImageService>();
+builder.Services.AddSingleton<FilterService>();
 builder.Services.AddSingleton<SessionStore>();
 builder.Services.AddSingleton<FilterLogger>();
-
-builder.Services.AddSingleton<IFilter, GrayscaleFilter>();
-builder.Services.AddSingleton<IFilter, InvertFilter>();
-builder.Services.AddSingleton<IFilter, BrightnessFilter>();
-builder.Services.AddSingleton<IFilter, ContrastFilter>();
-builder.Services.AddSingleton<IFilter, GammaFilter>();
-builder.Services.AddSingleton<IFilter, SmoothFilter>();
-builder.Services.AddSingleton<IFilter, EdgeDetectHVFilter>();
-builder.Services.AddSingleton<IFilter, FlipFilter>();
-builder.Services.AddSingleton<IFilter, WaterFilter>();
-builder.Services.AddSingleton<IFilter, StuckiFilter>();
-builder.Services.AddSingleton<IFilter, HistogramEqualizingFilter>();
-builder.Services.AddSingleton<FilterRegistry>();
-builder.Services.AddSingleton<FilterPipeline>();
 
 var app = builder.Build();
 

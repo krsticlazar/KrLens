@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using KrLensServer.Core.Exceptions;
 
 namespace KrLensServer.Core.Msi;
@@ -41,8 +42,11 @@ internal static class MsiColorTransform
     private static byte[] ConvertRgbToHsv(byte[] rgbPixels)
     {
         var hsvPixels = new byte[rgbPixels.Length];
-        for (var i = 0; i < rgbPixels.Length; i += 3)
+        var pixelCount = rgbPixels.Length / 3;
+
+        Parallel.For(0, pixelCount, pixel =>
         {
+            var i = pixel * 3;
             var r = rgbPixels[i] / 255d;
             var g = rgbPixels[i + 1] / 255d;
             var b = rgbPixels[i + 2] / 255d;
@@ -78,7 +82,7 @@ internal static class MsiColorTransform
             hsvPixels[i] = (byte)Math.Round((hue / 360d) * 255d);
             hsvPixels[i + 1] = (byte)Math.Round(saturation * 255d);
             hsvPixels[i + 2] = (byte)Math.Round(max * 255d);
-        }
+        });
 
         return hsvPixels;
     }
@@ -86,8 +90,11 @@ internal static class MsiColorTransform
     private static byte[] ConvertHsvToRgb(byte[] hsvPixels)
     {
         var rgbPixels = new byte[hsvPixels.Length];
-        for (var i = 0; i < hsvPixels.Length; i += 3)
+        var pixelCount = hsvPixels.Length / 3;
+
+        Parallel.For(0, pixelCount, pixel =>
         {
+            var i = pixel * 3;
             var h = (hsvPixels[i] / 255d) * 360d;
             var s = hsvPixels[i + 1] / 255d;
             var v = hsvPixels[i + 2] / 255d;
@@ -108,7 +115,7 @@ internal static class MsiColorTransform
             rgbPixels[i] = ClampToByte((rPrime + m) * 255d);
             rgbPixels[i + 1] = ClampToByte((gPrime + m) * 255d);
             rgbPixels[i + 2] = ClampToByte((bPrime + m) * 255d);
-        }
+        });
 
         return rgbPixels;
     }
@@ -116,8 +123,11 @@ internal static class MsiColorTransform
     private static byte[] ConvertRgbToYCbCr(byte[] rgbPixels)
     {
         var output = new byte[rgbPixels.Length];
-        for (var i = 0; i < rgbPixels.Length; i += 3)
+        var pixelCount = rgbPixels.Length / 3;
+
+        Parallel.For(0, pixelCount, pixel =>
         {
+            var i = pixel * 3;
             var r = rgbPixels[i];
             var g = rgbPixels[i + 1];
             var b = rgbPixels[i + 2];
@@ -129,7 +139,7 @@ internal static class MsiColorTransform
             output[i] = ClampToByte(y);
             output[i + 1] = ClampToByte(cb);
             output[i + 2] = ClampToByte(cr);
-        }
+        });
 
         return output;
     }
@@ -137,8 +147,11 @@ internal static class MsiColorTransform
     private static byte[] ConvertYCbCrToRgb(byte[] input)
     {
         var output = new byte[input.Length];
-        for (var i = 0; i < input.Length; i += 3)
+        var pixelCount = input.Length / 3;
+
+        Parallel.For(0, pixelCount, pixel =>
         {
+            var i = pixel * 3;
             var y = input[i];
             var cb = input[i + 1] - 128d;
             var cr = input[i + 2] - 128d;
@@ -150,7 +163,7 @@ internal static class MsiColorTransform
             output[i] = ClampToByte(r);
             output[i + 1] = ClampToByte(g);
             output[i + 2] = ClampToByte(b);
-        }
+        });
 
         return output;
     }

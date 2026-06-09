@@ -1,8 +1,11 @@
 
 temp/
-todo.txt
-docs/Vezbe - Materijali/
-docs/*.pdf
+Materijali/
+docs-temp/
+slike-primeri/
+
+KrLens.zip
+zip_proj.py
 
 .vs/
 .vscode/
@@ -14,6 +17,7 @@ TestResults/
 **/dist/
 **/coverage/
 .dotnet/
+
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -24,4 +28,7 @@ pnpm-debug.log*
 *.suo
 *.cache
 
+.env
+.env.*
+!*.env.example
 src/KrLensClient/.env.local

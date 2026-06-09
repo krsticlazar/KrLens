@@ -1,6 +1,5 @@
 using System.Drawing;
 using System.Drawing.Imaging;
-using KrLensServer.Core.Filters;
 using KrLensServer.Core.Exceptions;
 using KrLensServer.Core.Msi;
 using KrLensServer.Core.Models;
@@ -41,7 +40,7 @@ public sealed class ImageService
         memory.Position = 0;
 
         using var bitmap = new Bitmap(memory);
-        return BitmapFilterSupport.ToBuffer(bitmap);
+        return BitmapBufferCodec.ToBuffer(bitmap);
     }
 
     public async Task<byte[]> EncodeAsync(BitmapBuffer buffer, string format, CancellationToken cancellationToken = default)
@@ -56,7 +55,7 @@ public sealed class ImageService
         }
 
         cancellationToken.ThrowIfCancellationRequested();
-        using var bitmap = BitmapFilterSupport.CreateBitmap(buffer);
+        using var bitmap = BitmapBufferCodec.CreateBitmap(buffer);
         using var memory = new MemoryStream();
         bitmap.Save(memory, GetImageFormat(normalized));
         await memory.FlushAsync(cancellationToken);
